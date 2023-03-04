@@ -5,7 +5,8 @@
       <label class="label">Choose a database</label>
     </div>
     <div v-else>
-      <button class="btn" @click="insertUsers(100000)">Insert 1M users</button>
+      <button class="btn" @click="insertUsers(1000000)">Insert 1M users</button>
+      <button class="btn" @click="insertFollowers">Insert followers</button>
       <button class="btn" @click="clearDb">Clear database</button>
       <div v-if="isLoading" class="spinner"></div>
     </div>
@@ -92,6 +93,35 @@ export default {
     async getUsers() {
       const response = await axios.get('/api/data/postgres/users');
       this.users = response.data;
+    },
+    insertFollowers(){
+      if(this.selectedDatabase === 'postgres'){
+        this.isLoading=true;
+        axios.post(`/api/data/postgres/insert/`)
+            .then(()=>console.log("test"))
+            .finally(()=> {
+              console.log("test")
+              this.isLoading=false;
+            })
+            .catch(error => {
+              console.error(error);
+            });
+      }
+      else if(this.selectedDatabase === 'neo4j'){
+        this.isLoading=true;
+        console.log('Setting isLoading to true');
+        axios.post(`/api/data/neo4j/insert/followers/`)
+            .then(response=>console.log(response))
+            .finally(()=>{
+                  this.isLoading=false;
+                  console.log(this.isLoading);
+                }
+            )
+            .catch(error=>console.error(error));
+      }
+      else{
+        alert("no database selected");
+      }
     },
     insertUsers(numUsers){
       if(this.selectedDatabase === 'postgres'){

@@ -1,5 +1,5 @@
 const express = require('express');
-const {driver, closeNeo4jSession, insertUsersNeo4j, clearDatabase, insertUsersBatchNeo4j} = require('./neo4j');
+const {driver, closeNeo4jSession, clearDatabase, addFollowsToUsers, insertUsersBatchNeo4j} = require('./neo4j');
 const { insertUsers, getUsers } = require('./postgresql');
 
 
@@ -27,9 +27,6 @@ app.get('/api/data/neo4j/clear',  async (req, res) => {
 app.post('/api/data/neo4j/insert/users/:numUsers', async (req, res) => {
     const numUsers = parseInt(req.params.numUsers);
     console.log(numUsers);
-    /*await insertUsersNeo4j(numUsers);
-    res.send(`Inserted ${numUsers} users into Neo4j`);*/
-    // Call the function to insert all users in batches
     try{
         await insertUsersBatchNeo4j(numUsers);
         res.status(200).json({ message: 'Users created successfully' });
@@ -38,15 +35,20 @@ app.post('/api/data/neo4j/insert/users/:numUsers', async (req, res) => {
         console.error(error);
         res.status(500).json({ message: 'Error creating users' });
     }
+});
 
-    //     .then(() => {
-    //         console.log(`Inserted all ${numUsers} users`);
-    //         driver.close();
-    //     })
-    //     .catch(error => {
-    //         console.error(error);
-    //         driver.close();
-    //     });
+// Insert follows endpoint
+app.post('/api/data/neo4j/insert/followers/', async (req, res) => {
+    // const numUsers = parseInt(req.params.numUsers);
+    // console.log(numUsers);
+    try{
+        await addFollowsToUsers();
+        res.status(200).json({ message: 'Followers created successfully' });
+    }
+    catch (error){
+        console.error(error);
+        res.status(500).json({ message: 'Error creating followers' });
+    }
 });
 
 // Create follow relationships endpoint

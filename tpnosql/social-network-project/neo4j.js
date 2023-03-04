@@ -1,8 +1,22 @@
 const neo4j = require('neo4j-driver');
 const faker = require("faker");
 const {session} = require("neo4j-driver");
+const fs = require('fs');
+const path = require('path');
+
 const batchSize = 10000;
 const insertUserQuery = 'CREATE (:User {id: $id, name: $name})';
+const insertFollowsQuery = `MATCH (a:User),(b:User)
+                            WHERE a.id = $userId AND b.id = $followUserId
+                            CREATE (a)-[:Follows]->(b)`;
+
+
+// Define the Cypher query to create the follow relationships
+const followsQuery = `
+LOAD CSV WITH HEADERS FROM "file:///follows.csv" AS row
+MATCH (a:User {id: row.user_id}), (b:User {id: row.follower_id})
+CREATE (a)-[:FOLLOWS]->(b)
+`;
 
 const driver = neo4j.driver(
     'neo4j://localhost:7687',
@@ -10,77 +24,87 @@ const driver = neo4j.driver(
 );
 
 
-// Create a function to generate a batch of user objects
-function generateUserBatch(numUsers) {
-    const batch = [];
-    for (let i = 1; i <= numUsers; i++) {
-        batch.push({ id: i, name: faker.name.findName() });
-    }
-    return batch;
-}
-
-// Create a function to insert a batch of users into Neo4j
-async function insertUsers(batch, session) {
-    await session.writeTransaction(tx => {
-        for (const user of batch) {
-            tx.run(insertUserQuery, user);
-        }
-    });
-}
-
 // Create a function to insert all users in batches
 async function insertUsersBatchNeo4j(numUsers) {
     const session = driver.session();
+    const batchSize = 1000;
+    const numBatches = Math.ceil(numUsers / batchSize);
+    console.log(numBatches);
     const startTime = performance.now();
-    try{
-        for (let i = 0; i < numUsers; i += batchSize) {
-            const batch = generateUserBatch(batchSize);
-            await insertUsers(batch, session);
-            console.log(`Inserted ${batchSize} users (${i + 1}-${i + batchSize})`);
+    let id = 0;
+
+    for (let i = 0; i < numBatches; i++) {
+        const batch = [];
+        for (let j = 0; j < batchSize; j++) {
+            const name = faker.name.findName();
+            batch.push({id, name});
+            id ++;
         }
-        const endTime = performance.now();
-        console.log(`Inserted ${numUsers} users into the Neo4j database in ${endTime - startTime} milliseconds.`);
+
+        const params = {
+            batch: batch
+        };
+
+        await session.run(`
+          CALL apoc.periodic.iterate(
+            "UNWIND $batch as row
+             CREATE (u:User {id: row.id, name: row.name})",
+            "RETURN count(*)",
+            {batchSize: ${batchSize}, params: $params}
+          )
+        `, {params: params});
     }
-    finally {
-        await session.close();
-        console.log("session closed");
-    }
+    console.log("last id:"+id);
+    const endTime = performance.now();
+    console.log(`Inserted ${numUsers} users into the Neo4j database in ${(endTime - startTime)/1000} seconds.`);
+
+    await session.close();
 }
 
 
-// Insert users
-const insertUsersNeo4j = async (numUsers) => {
-    const tx = driver.session().beginTransaction();
+
+async function insertFollowsInBatches(session, follows, batchSize) {
+    const numBatches = Math.ceil(follows.length / batchSize);
+    for (let i = 0; i < numBatches; i++) {
+        const batch = follows.slice(i * batchSize, (i + 1) * batchSize);
+
+        const params = {
+            batch: batch
+        };
+
+        await session.run(`
+          CALL apoc.periodic.iterate(
+            "UNWIND $batch as rel
+            MATCH (follower:User {id: rel.followerId}), (followed:User {id: rel.followedId}) 
+            MERGE (follower)-[:FOLLOWS]->(followed)",
+            "RETURN count(*)",
+            {batchSize: ${batchSize}, params: $params}
+          )
+        `, {params: params});
+    }
+}
+
+async function addFollowsToUsers() {
+    const session = driver.session();
+    const numUsers = await getUsersCount();
+
+    const follows = [];
+    for (let i = 1; i <= numUsers; i++) {
+        const numFollowed = Math.floor(Math.random() * 21); // each user can follow 0 - 20 people
+        for (let j = 0; j < numFollowed; j++) {
+            const followedId = Math.floor(Math.random() * numUsers) + 1;
+            follows.push({ followerId: i, followedId: followedId });
+        }
+    }
+    const batchSize = 1000;
     const startTime = performance.now();
-
-    for (let i = 0; i < numUsers; i++) {
-        const firstname = faker.name.firstName();
-        const lastname = faker.name.lastName();
-        const result = await tx.run('CREATE (:User {firstname: $firstname, lastname: $lastname})',
-            { firstname,lastname });
-        console.log(`Created user ${firstname}`);
-    }
+    await insertFollowsInBatches(session, follows, batchSize);
     const endTime = performance.now();
-    console.log(`Inserted ${numUsers} users into the Neo4j database in ${endTime - startTime} milliseconds.`);
-    await tx.commit();
-};
+    console.log(`Inserted ${follows.length} follow relationships into the Neo4j database in ${(endTime - startTime)/1000} seconds.`);
+    await session.close();
+}
 
-// Create follow relationships
-const createFollowRelationships = async (numFollows) => {
-    const tx = driver.session.beginTransaction();
 
-    for (let i = 0; i < numFollows; i++) {
-        const user1 = `User ${Math.floor(Math.random() * 10)}`;
-        const user2 = `User ${Math.floor(Math.random() * 10)}`;
-        const result = await tx.run(
-            'MATCH (u1:User {name: $user1}), (u2:User {name: $user2}) CREATE (u1)-[:FOLLOWS]->(u2)',
-            { user1, user2 }
-        );
-        console.log(`${user1} follows ${user2}`);
-    }
-
-    await tx.commit();
-};
 
 // Create product relationships
 const createProductRelationships = async (numProducts) => {
@@ -120,11 +144,25 @@ async function closeNeo4jSession() {
 
     //driver.close().then(() => console.log("closing neo4j session"));
 }
+async function getUsersCount(){
+    const session = driver.session();
+    try {
+        const query = 'MATCH (u:User)\n' +
+            'RETURN count(u) as userCount\n';
+        const result = await session.run(query);
+        return result.records[0].get(0).toNumber();
+    } catch (error) {
+        console.error(error);
+    } finally {
+        await session.close();
+    }
+}
+
 
 module.exports = {
     closeNeo4jSession,
-    insertUsersNeo4j,
     clearDatabase,
     insertUsersBatchNeo4j,
+    addFollowsToUsers,
     driver
 };
