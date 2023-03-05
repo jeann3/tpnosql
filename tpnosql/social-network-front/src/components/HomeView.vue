@@ -4,31 +4,17 @@
     <div v-if="selectedDatabase===null">
       <label class="label">Choose a database</label>
     </div>
-    <div v-else>
+    <div class ="btn-container" v-else>
+      <button class="btn" @click="clearDb">Clear database</button>
+      <button class="btn" @click="query1">Query 1</button>
+      <button class="btn" @click="query2">Query 2</button>
+      <button class="btn" @click="query3">Query 3</button>
       <button class="btn" @click="insertUsers(1000000)">Insert 1M users</button>
       <button class="btn" @click="insertFollowers">Insert followers</button>
-      <button class="btn" @click="clearDb">Clear database</button>
+      <button class="btn" @click="insertOrders">Insert orders</button>
+      <button class="btn" @click="insertProducts">Insert 10k products</button>
       <div v-if="isLoading" class="spinner"></div>
     </div>
-    <!--    <button @click="getNeo4jCount">Show Neo4j count</button>-->
-<!--    <button @click="insertUsersNeo4j(10)">Insert 10 users Neo4j</button>-->
-<!--    <button @click="getPostgresCount">Show Postgres count</button>-->
-<!--    <div>{{ neo4jCount }}</div>-->
-<!--    <div>{{ postgresCount }}</div>-->
-<!--    <div>-->
-<!--      <button @click="clearNeo4jDb">Clear Neo4jDB</button>-->
-<!--    </div>-->
-<!--    <div>-->
-<!--      <button @click="insertUsers(10)">Insert 10 users</button>-->
-<!--    </div>-->
-<!--    <div>-->
-<!--      <button @click="getUsers">Get users</button>-->
-<!--      <div v-if="users.length > 0">-->
-<!--        <ul>-->
-<!--          <li v-for="user in users" :key="user.userid">{{ user.firstname }}</li>-->
-<!--        </ul>-->
-<!--      </div>-->
-<!--    </div>-->
   </div>
 </template>
 
@@ -76,23 +62,59 @@ export default {
         alert("no database selected");
       }
     },
-    async clearNeo4jDb(){
-      const response = await axios.get('/api/data/neo4j/clear');
-      console.log(response);
+    query1(){
+      if(this.selectedDatabase === 'postgres'){
+        console.log("");
+      }
+      else if(this.selectedDatabase === 'neo4j'){
+        this.isLoading=true;
+        axios.get(`/api/data/neo4j/query1`)
+            .then(response=>console.log(response))
+            .finally(()=>{
+                  this.isLoading=false;
+                }
+            )
+            .catch(error=>console.error(error));
+      }
+      else{
+        alert("no database selected");
+      }
     },
-    async getNeo4jCount() {
-      const response = await axios.get('/api/data/neo4j');
-      this.neo4jCount = response.data.count;
-      console.log(this.neo4jCount);
+    query2(){
+      if(this.selectedDatabase === 'postgres'){
+        console.log("");
+      }
+      else if(this.selectedDatabase === 'neo4j'){
+        this.isLoading=true;
+        axios.get(`/api/data/neo4j/query2`)
+            .then(response=>console.log(response))
+            .finally(()=>{
+                  this.isLoading=false;
+                }
+            )
+            .catch(error=>console.error(error));
+      }
+      else{
+        alert("no database selected");
+      }
     },
-    async getPostgresCount() {
-      const response = await axios.get('/api/data/postgres');
-      this.postgresCount = response.data.count;
-      console.log(this.postgresCount);
-    },
-    async getUsers() {
-      const response = await axios.get('/api/data/postgres/users');
-      this.users = response.data;
+    query3(){
+      if(this.selectedDatabase === 'postgres'){
+        console.log("");
+      }
+      else if(this.selectedDatabase === 'neo4j'){
+        this.isLoading=true;
+        axios.get(`/api/data/neo4j/query3`)
+            .then(response=>console.log(response))
+            .finally(()=>{
+                  this.isLoading=false;
+                }
+            )
+            .catch(error=>console.error(error));
+      }
+      else{
+        alert("no database selected");
+      }
     },
     insertFollowers(){
       if(this.selectedDatabase === 'postgres'){
@@ -109,12 +131,37 @@ export default {
       }
       else if(this.selectedDatabase === 'neo4j'){
         this.isLoading=true;
-        console.log('Setting isLoading to true');
         axios.post(`/api/data/neo4j/insert/followers/`)
             .then(response=>console.log(response))
             .finally(()=>{
                   this.isLoading=false;
-                  console.log(this.isLoading);
+                }
+            )
+            .catch(error=>console.error(error));
+      }
+      else{
+        alert("no database selected");
+      }
+    },
+    insertOrders(){
+      if(this.selectedDatabase === 'postgres'){
+        this.isLoading=true;
+        axios.post(`/api/data/postgres/insert/`)
+            .then(()=>console.log("test"))
+            .finally(()=> {
+              console.log("test")
+              this.isLoading=false;
+            })
+            .catch(error => {
+              console.error(error);
+            });
+      }
+      else if(this.selectedDatabase === 'neo4j'){
+        this.isLoading=true;
+        axios.post(`/api/data/neo4j/insert/orders/`)
+            .then(response=>console.log(response))
+            .finally(()=>{
+                  this.isLoading=false;
                 }
             )
             .catch(error=>console.error(error));
@@ -145,6 +192,35 @@ export default {
               this.isLoading=false;
               console.log(this.isLoading);
               }
+            )
+            .catch(error=>console.error(error));
+      }
+      else{
+        alert("no database selected");
+      }
+    },
+    insertProducts(){
+      if(this.selectedDatabase === 'postgres'){
+        this.isLoading=true;
+        axios.post(`/api/data/postgres/insert/products`)
+            .then(()=>console.log("test"))
+            .finally(()=> {
+              console.log("test")
+              this.isLoading=false;
+            })
+            .catch(error => {
+              console.error(error);
+            });
+      }
+      else if(this.selectedDatabase === 'neo4j'){
+        this.isLoading=true;
+        console.log('Setting isLoading to true');
+        axios.post(`/api/data/neo4j/insert/products`)
+            .then(response=>console.log(response))
+            .finally(()=>{
+                  this.isLoading=false;
+                  console.log(this.isLoading);
+                }
             )
             .catch(error=>console.error(error));
       }
@@ -192,7 +268,8 @@ body {
 
 .btn {
   font-size: 20px;
-  display: block;
+  flex: 0 0 calc(50% - 1em); /* 4 buttons per row */
+  margin: 0.5em;
   border: 1px solid #33cccc;
   background-color: transparent;
   color:  #33cccc;
@@ -200,9 +277,6 @@ body {
   border-radius: 10px;
   cursor: pointer;
   font-weight: 300;
-  margin-top: 30px;
-  margin-left: 15px;
-  margin-right: 15px;
 }
 
 .btn:hover {
@@ -226,7 +300,11 @@ body {
   animation: spin 1s ease-in-out infinite;
   margin: 30px auto 0;
 }
-
+.btn-container{
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 25%;
+}
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }

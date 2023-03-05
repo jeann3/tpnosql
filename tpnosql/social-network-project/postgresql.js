@@ -9,24 +9,6 @@ const pool = new Pool({
         port: 5432,
 });
 
-// async function getUsers() {
-//         try {
-//                 // Get a new client from the pool
-//                 const client = await pool.connect();
-//
-//                 // Run the query to retrieve all users
-//                 const result = await client.query('SELECT * FROM "user"');
-//
-//                 // Release the client back to the pool
-//                 client.release();
-//
-//                 // Return the results
-//                 return result.rows;
-//         } catch (err) {
-//                 console.error(err);
-//         }
-// }
-
 const getUsers = async (req, res) => {
         const client = await pool.connect();
         try {
